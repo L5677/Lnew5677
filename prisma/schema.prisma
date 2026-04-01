@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  EMPLOYEE
+  ADMIN
+}
+
+enum AttendanceStatus {
+  PRESENT
+  LEAVE
+}
+
+enum WorkDayType {
+  WEEKDAY
+  WEEKEND_WORK
+  PUBLIC_HOLIDAY_WORK
+}
+
+enum SubmissionStatus {
+  DRAFT
+  SUBMITTED
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  role         Role      @default(EMPLOYEE)
+  employeeId   String?   @unique
+  employee     Employee? @relation(fields: [employeeId], references: [id])
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Employee {
+  id         String               @id @default(cuid())
+  code       String               @unique
+  name       String
+  department String?
+  user       User?
+  records    AttendanceRecord[]
+  monthly    MonthlySubmission[]
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+}
+
+model AttendanceRecord {
+  id                    String           @id @default(cuid())
+  employeeId            String
+  employee              Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  workDate              String
+  clockIn               String?
+  clockOut              String?
+  breakDeductionMinutes Int              @default(0)
+  attendanceStatus      AttendanceStatus @default(PRESENT)
+  workDayType           WorkDayType      @default(WEEKDAY)
+  isPublicHoliday       Boolean          @default(false)
+  totalWorkMinutes      Int              @default(0)
+  notes                 String?
+  submissionStatus      SubmissionStatus @default(DRAFT)
+  submittedAt           DateTime?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  @@unique([employeeId, workDate])
+}
+
+model MonthlySubmission {
+  id          String           @id @default(cuid())
+  employeeId  String
+  employee    Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  yearMonth   String
+  status      SubmissionStatus @default(DRAFT)
+  submittedAt DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([employeeId, yearMonth])
+}
+
+model Holiday {
+  id   String @id @default(cuid())
+  date String @unique
+  name String
+}
